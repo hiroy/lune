@@ -1,6 +1,6 @@
 <?php
 /**
- * karinto - MONOGUSA web application framework
+ * karinto - the micro-framework for PHP web apps
  *
  * PHP version 5
  *
