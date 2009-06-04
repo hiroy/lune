@@ -12,6 +12,7 @@
 
 class karinto
 {
+    // configuration
     public static $template_dir = 'templates';
     public static $function_dir;
     public static $input_encoding;
@@ -19,6 +20,9 @@ class karinto
     public static $layout_template;
     public static $layout_content_var_name = 'karinto_content_for_layout';
     public static $session_secret_key = 'your app key here';
+    public static $http_version = '1.1';
+
+    // used internally
     public static $invoked_function_name;
 
     public static function run()
@@ -338,8 +342,6 @@ class karinto_response
 
     public function status($code)
     {
-        $protocol = karinto::env('SERVER_PROTOCOL');
-        $http_version = (strpos($protocol, '1.1') !== false) ? '1.1' : '1.0';
         static $messages = array(
             // Informational 1xx
             100 => 'Continue',
@@ -390,13 +392,14 @@ class karinto_response
             509 => 'Bandwidth Limit Exceeded'
         );
         if (isset($messages[$code])) {
-            if ($http_version !== '1.1') {
+            if (karinto::$http_version !== '1.1') {
                 // HTTP/1.0
                 $messages[302] = 'Moved Temporarily';
             }
             $message = $messages[$code];
             $this->header('Status', "{$code} {$message}");
-            $this->header(null, "HTTP/{$http_version} {$code} {$message}");
+            $this->header(
+                null, "HTTP/{karinto::$http_version} {$code} {$message}");
         }
     }
 
