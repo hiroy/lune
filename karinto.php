@@ -23,7 +23,24 @@ class karinto
     public static $http_version = '1.1';
 
     // used internally
+    public static $routes_get = array();
+    public static $routes_post = array();
     public static $invoked_function_name;
+
+    public static function route($url_path, $function_name)
+    {
+        self::route_get($url_path, $function_name);
+    }
+
+    public static function route_get($url_path, $function_name)
+    {
+        self::$routes_get[$url_path] = $function_name;
+    }
+
+    public static function route_post($url_path, $function_name)
+    {
+        self::$routes_post[$url_path] = $function_name;
+    }
 
     public static function run()
     {
@@ -31,47 +48,57 @@ class karinto
         $path_info = self::path_info();
         $path_info_pieces = explode('/', strtolower(trim($path_info, '/')));
 
-        $request_method = strtolower(self::env('REQUEST_METHOD'));
-        $use_function_dir = strlen(self::$function_dir) > 0;
+        // routes
+        $routes = self::$routes_get;
+        if (strtolower(self::env('REQUEST_METHOD')) === 'post') {
+            $routes = self::$routes_post;
+        }
 
         // init
+        $use_function_dir = strlen(self::$function_dir) > 0;
         $url_params = array();
         $req = new karinto_request();
         $res = new karinto_response();
 
         while (count($path_info_pieces) > 0) {
 
-            $f = $request_method . '_' . implode('_', $path_info_pieces);
+            $url_path = '/' . implode('/', $path_info_pieces);
 
-            if ($use_function_dir && !function_exists($f)) {
-                // try to load
-                $path = self::$function_dir . DIRECTORY_SEPARATOR . $f . '.php';
-                if (is_file($path) && is_readable($path)) {
-                    include_once $file;
-                }
-            }
+            if (isset($routes[$url_path])) {
 
-            if (function_exists($f)) {
+                $function_name = $routes[$url_path];
 
-                self::$invoked_function_name = $f;
-                $url_params = array_reverse($url_params);
-                $req->init($url_params);
-
-                try {
-                    $ref = new ReflectionFunction($f);
-                    if ($ref->getNumberOfParameters() < 3) {
-                        $f($req, $res);
-                    } else {
-                        // uses session
-                        $session = new karinto_session($res);
-                        $f($req, $res, $session);
+                if ($use_function_dir && !function_exists($function_name)) {
+                    // try to load
+                    $path = self::$function_dir .
+                        DIRECTORY_SEPARATOR . $function_name . '.php';
+                    if (is_file($path) && is_readable($path)) {
+                        include_once $path;
                     }
-                } catch (Exception $e) {
-                    // uncaught exception
-                    $res->status(500);
                 }
 
-                return;
+                if (function_exists($function_name)) {
+
+                    self::$invoked_function_name = $function_name;
+                    $url_params = array_reverse($url_params);
+                    $req->init($url_params);
+
+                    try {
+                        $ref = new ReflectionFunction($function_name);
+                        if ($ref->getNumberOfParameters() < 3) {
+                            $function_name($req, $res);
+                        } else {
+                            // uses session
+                            $session = new karinto_session($res);
+                            $function_name($req, $res, $session);
+                        }
+                    } catch (Exception $e) {
+                        // uncaught exception
+                        $res->status(500);
+                    }
+
+                    return;
+                }
             }
             // not found
             $url_params[] = array_pop($path_info_pieces);
@@ -392,14 +419,15 @@ class karinto_response
             509 => 'Bandwidth Limit Exceeded'
         );
         if (isset($messages[$code])) {
-            if (karinto::$http_version !== '1.1') {
+            $http_version = karinto::$http_version;
+            if ($http_version !== '1.1') {
                 // HTTP/1.0
                 $messages[302] = 'Moved Temporarily';
             }
             $message = $messages[$code];
             $this->header('Status', "{$code} {$message}");
             $this->header(
-                null, "HTTP/{karinto::$http_version} {$code} {$message}");
+                null, "HTTP/{$http_version} {$code} {$message}");
         }
     }
 
