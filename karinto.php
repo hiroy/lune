@@ -14,7 +14,6 @@ class karinto
 {
     // configuration
     public static $template_dir = 'templates';
-    public static $function_dir;
     public static $input_encoding;
     public static $output_encoding;
     public static $layout_template;
@@ -54,7 +53,6 @@ class karinto
         }
 
         // init
-        $use_function_dir = strlen(self::$function_dir) > 0;
         $url_params = array();
         $req = new karinto_request();
         $res = new karinto_response();
@@ -63,34 +61,23 @@ class karinto
 
             $url_path = '/' . implode('/', $path_info_pieces);
 
-            if (isset($routes[$url_path])) {
+            if (isset($routes[$url_path]) &&
+                function_exists($routes[$url_path])) {
 
                 $function_name = $routes[$url_path];
+                self::$invoked_function_name = $function_name;
 
-                if ($use_function_dir && !function_exists($function_name)) {
-                    // try to load
-                    $path = self::$function_dir .
-                        DIRECTORY_SEPARATOR . $function_name . '.php';
-                    if (is_file($path) && is_readable($path)) {
-                        include_once $path;
-                    }
+                $url_params = array_reverse($url_params);
+                $req->init($url_params);
+
+                try {
+                    $function_name($req, $res);
+                } catch (Exception $e) {
+                    // uncaught exception
+                    $res->status(500);
                 }
 
-                if (function_exists($function_name)) {
-
-                    self::$invoked_function_name = $function_name;
-                    $url_params = array_reverse($url_params);
-                    $req->init($url_params);
-
-                    try {
-                        $function_name($req, $res);
-                    } catch (Exception $e) {
-                        // uncaught exception
-                        $res->status(500);
-                    }
-
-                    return;
-                }
+                return;
             }
             // not found
             $url_params[] = array_pop($path_info_pieces);
