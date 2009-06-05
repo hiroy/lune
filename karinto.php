@@ -23,6 +23,7 @@ class karinto
     // used internally
     public static $routes_get = array();
     public static $routes_post = array();
+    public static $invoked_function_name;
 
     public static function route($url_path, $callback)
     {
@@ -64,6 +65,10 @@ class karinto
                 is_callable($routes[$url_path])) {
 
                 $callback = $routes[$url_path];
+                if (function_exists($callback)) {
+                    self::$invoked_function_name = $callback;
+                }
+
                 $url_params = array_reverse($url_params);
                 $req->init($url_params);
 
@@ -89,7 +94,7 @@ class karinto
         if ($value === false) {
             $value = null;
         }
-        return str_replace("\0", '', $value);
+        return str_replace(chr(0), '', $value);
     }
 
     public static function uri()
@@ -194,7 +199,7 @@ class karinto_request
         if (get_magic_quotes_gpc()) {
             $var = stripslashes($var);
         }
-        return str_replace("\0", '', $var);
+        return str_replace(chr(0), '', $var);
     }
 }
 
@@ -267,9 +272,12 @@ class karinto_response
         $this->_body .= $text;
     }
 
-    public function render($template, $convert_encoding = true)
+    public function render($template = null, $convert_encoding = true)
     {
         $text = '';
+        if (is_null($template) && !is_null(karinto::$invoked_function_name)) {
+            $template = karinto::$invoked_function_name . '.php';
+        }
         try {
             $text = $this->fetch($template);
         } catch (karinto_exception $e) {
@@ -281,6 +289,10 @@ class karinto_response
 
     public function fetch($template, $html_escape = true)
     {
+        if (is_null($template)) {
+            throw new karinto_exception("template not set");
+        }
+
         $layout_template = null;
         if (!is_null(karinto::$layout_template)) {
             // layout template
