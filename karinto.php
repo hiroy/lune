@@ -24,19 +24,19 @@ class karinto
     public static $routes_get = array();
     public static $routes_post = array();
 
-    public static function route($url_path, $function_name)
+    public static function route($url_path, $callback)
     {
-        self::route_get($url_path, $function_name);
+        self::route_get($url_path, $callback);
     }
 
-    public static function route_get($url_path, $function_name)
+    public static function route_get($url_path, $callback)
     {
-        self::$routes_get[$url_path] = $function_name;
+        self::$routes_get[$url_path] = $callback;
     }
 
-    public static function route_post($url_path, $function_name)
+    public static function route_post($url_path, $callback)
     {
-        self::$routes_post[$url_path] = $function_name;
+        self::$routes_post[$url_path] = $callback;
     }
 
     public static function run()
@@ -61,14 +61,14 @@ class karinto
             $url_path = '/' . implode('/', $path_info_pieces);
 
             if (isset($routes[$url_path]) &&
-                function_exists($routes[$url_path])) {
+                is_callable($routes[$url_path])) {
 
-                $function_name = $routes[$url_path];
+                $callback = $routes[$url_path];
                 $url_params = array_reverse($url_params);
                 $req->init($url_params);
 
                 try {
-                    $function_name($req, $res);
+                    call_user_func($callback, &$req, &$res);
                 } catch (Exception $e) {
                     // uncaught exception
                     $res->status(500);
