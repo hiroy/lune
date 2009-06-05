@@ -23,7 +23,6 @@ class karinto
     // used internally
     public static $routes_get = array();
     public static $routes_post = array();
-    public static $invoked_function_name;
 
     public static function route($url_path, $function_name)
     {
@@ -65,8 +64,6 @@ class karinto
                 function_exists($routes[$url_path])) {
 
                 $function_name = $routes[$url_path];
-                self::$invoked_function_name = $function_name;
-
                 $url_params = array_reverse($url_params);
                 $req->init($url_params);
 
@@ -270,13 +267,9 @@ class karinto_response
         $this->_body .= $text;
     }
 
-    public function render($template = null, $convert_encoding = true)
+    public function render($template, $convert_encoding = true)
     {
         $text = '';
-        if (is_null($template)) {
-            // default template
-            $template = karinto::$invoked_function_name . '.php';
-        }
         try {
             $text = $this->fetch($template);
         } catch (karinto_exception $e) {
