@@ -62,10 +62,10 @@ class karinto
             $url_path = '/' . implode('/', $path_info_pieces);
 
             if (isset($routes[$url_path]) &&
-                is_callable($routes[$url_path])) {
+                is_callable($routes[$url_path], false, $callable_name)) {
 
                 $callback = $routes[$url_path];
-                if (function_exists($callback)) {
+                if (strpos($callable_name, '::') === false) {
                     self::$invoked_function_name = $callback;
                 }
 
