@@ -23,6 +23,8 @@ class karinto
     // used internally
     public static $routes_get = array();
     public static $routes_post = array();
+    public static $routes_put = array();
+    public static $routes_delete = array();
     public static $invoked_function_name;
 
     public static function route($url_path, $callback)
@@ -40,6 +42,16 @@ class karinto
         self::$routes_post[$url_path] = $callback;
     }
 
+    public static function route_put($url_path, $callback)
+    {
+        self::$routes_put[$url_path] = $callback;
+    }
+
+    public static function route_delete($url_path, $callback)
+    {
+        self::$routes_delete[$url_path] = $callback;
+    }
+
     public static function run()
     {
         // path_info
@@ -47,9 +59,20 @@ class karinto
         $path_info_pieces = explode('/', strtolower(trim($path_info, '/')));
 
         // routes
-        $routes = self::$routes_get;
-        if (strtolower(self::env('REQUEST_METHOD')) !== 'get') {
+        $routes = array();
+        switch (strtoupper(self::env('REQUEST_METHOD'))) {
+        case 'GET':
+            $routes = self::$routes_get;
+            break;
+        case 'POST':
             $routes = self::$routes_post;
+            break;
+        case 'PUT':
+            $routes = self::$routes_put;
+            break;
+        case 'DELETE':
+            $routes = self::$routes_delete;
+            break;
         }
 
         // init
