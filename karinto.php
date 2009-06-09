@@ -48,7 +48,7 @@ class karinto
 
         // routes
         $routes = self::$routes_get;
-        if (strtolower(self::env('REQUEST_METHOD')) === 'post') {
+        if (strtolower(self::env('REQUEST_METHOD')) !== 'get') {
             $routes = self::$routes_post;
         }
 
@@ -66,6 +66,7 @@ class karinto
 
                 $callback = $routes[$url_path];
                 if (strpos($callable_name, '::') === false) {
+                    // maybe a function
                     self::$invoked_function_name = $callback;
                 }
 
@@ -275,7 +276,8 @@ class karinto_response
     public function render($template = null, $convert_encoding = true)
     {
         $text = '';
-        if (is_null($template) && !is_null(karinto::$invoked_function_name)) {
+        if (is_null($template) &&
+            !is_null(karinto::$invoked_function_name)) {
             $template = karinto::$invoked_function_name . '.php';
         }
         try {
@@ -297,7 +299,8 @@ class karinto_response
         if (!is_null(karinto::$layout_template)) {
             // layout template
             $layout_template = karinto::template(karinto::$layout_template);
-            if (!is_file($layout_template) || !is_readable($layout_template)) {
+            if (!is_file($layout_template) ||
+                !is_readable($layout_template)) {
                 throw new karinto_exception(
                     "{$layout_template}: not readable");
             }
@@ -342,8 +345,8 @@ class karinto_response
         }
         $this->status($status_code);
         $this->header('Location', $url);
-        $this->output('<html><head><meta http-equiv="refresh" content="0;url='
-            . htmlentities($url, ENT_QUOTES) . '"></head></html>');
+        $this->output('<html><head><meta http-equiv="refresh" content="0;'
+            . 'url=' . htmlentities($url, ENT_QUOTES) . '"></head></html>');
     }
 
     public function content_type($type)
