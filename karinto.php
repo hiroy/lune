@@ -349,9 +349,17 @@ class karinto_response
             . 'url=' . htmlentities($url, ENT_QUOTES) . '"></head></html>');
     }
 
-    public function content_type($type)
+    public function content_type($type, $charset = null)
     {
+        if (!is_null($charset)) {
+            $type .= ';charset=' . $charset;
+        }
         $this->header('Content-Type', $type);
+    }
+
+    public function content_type_html($charset = null)
+    {
+        $this->content_type('text/html', $charset);
     }
 
     public function status($code)
