@@ -239,9 +239,7 @@ class karinto_response
         }
         // output
         echo $this->_body;
-        while (ob_get_length() > 0) {
-            ob_end_flush();
-        }
+        ob_end_flush();
     }
 
     public function __set($name, $value)
