@@ -79,7 +79,7 @@ class karinto
                 $req->init($url_params);
 
                 try {
-                    call_user_func($callback, &$req, &$res);
+                    call_user_func_array($callback, array(&$req, &$res));
                 } catch (Exception $e) {
                     // uncaught exception
                     $res->status(500);
