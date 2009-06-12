@@ -23,6 +23,8 @@ class karinto
     // used internally
     public static $routes_get = array();
     public static $routes_post = array();
+    public static $routes_put = array();
+    public static $routes_delete = array();
     public static $invoked_function_name;
 
     public static function route($url_path, $callback)
@@ -40,6 +42,16 @@ class karinto
         self::$routes_post[$url_path] = $callback;
     }
 
+    public static function route_put($url_path, $callback)
+    {
+        self::$routes_put[$url_path] = $callback;
+    }
+
+    public static function route_delete($url_path, $callback)
+    {
+        self::$routes_delete[$url_path] = $callback;
+    }
+
     public static function run()
     {
         // path_info
@@ -48,12 +60,18 @@ class karinto
 
         // routes
         $routes = array();
-        switch (strtoupper(self::env('REQUEST_METHOD'))) {
+        switch (self::request_method()) {
         case 'GET':
             $routes = self::$routes_get;
             break;
         case 'POST':
             $routes = self::$routes_post;
+            break;
+        case 'PUT':
+            $routes = self::$routes_put;
+            break;
+        case 'DELETE':
+            $routes = self::$routes_delete;
             break;
         }
 
@@ -132,6 +150,24 @@ class karinto
         return preg_replace("/^{$trim_pattern}/", '', $uri);
     }
 
+    public static function request_method()
+    {
+        $method = strtoupper(self::env('REQUEST_METHOD'));
+        if ($method === 'POST' &&
+            isset($_POST['_method']) &&
+            is_string($_POST['_method'])) {
+            switch (strtoupper($_POST['_method'])) {
+            case 'PUT':
+                $method = 'PUT';
+                break;
+            case 'DELETE':
+                $method = 'DELETE';
+                break;
+            }
+        }
+        return $method;
+    }
+
     public static function template($template_file)
     {
         return self::$template_dir . DIRECTORY_SEPARATOR . $template_file;
@@ -187,6 +223,40 @@ class karinto_request
             return $this->_url_params[$index];
         }
         return null;
+    }
+
+    public function put_raw_params()
+    {
+        if (karinto::request_method() !== 'PUT') {
+            return null;
+        }
+        if (isset($_POST['_method']) &&
+            is_string($_POST['_method']) &&
+            strtoupper($_POST['_method']) === 'PUT') {
+            // raw POST data (not converted)
+            $put_params = $_POST;
+            unset($put_params['_method']);
+        } else {
+            parse_str(file_get_contents('php://input', $put_params));
+        }
+        return $put_params;
+    }
+
+    public function delete_raw_params()
+    {
+        if (karinto::request_method() !== 'DELETE') {
+            return null;
+        }
+        if (isset($_POST['_method']) &&
+            is_string($_POST['_method']) &&
+            strtoupper($_POST['_method']) === 'DELETE') {
+            // raw POST data (not converted)
+            $delete_params = $_POST;
+            unset($delete_params['_method']);
+        } else {
+            parse_str(file_get_contents('php://input', $delete_params));
+        }
+        return $delete_params;
     }
 
     public function cookie($name)
