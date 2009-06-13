@@ -76,7 +76,7 @@ class karinto
             break;
         }
 
-        // function_dir?
+        // uses function_dir?
         $use_function_dir = strlen(self::$function_dir) > 0;
 
         // init
