@@ -27,29 +27,29 @@ class karinto
     public static $routes_delete = array();
     public static $invoked_function_name;
 
-    public static function route($url_path, $callback)
+    public static function route($url_path, $function)
     {
-        self::route_get($url_path, $callback);
+        self::route_get($url_path, $function);
     }
 
-    public static function route_get($url_path, $callback)
+    public static function route_get($url_path, $function)
     {
-        self::$routes_get[$url_path] = $callback;
+        self::$routes_get[$url_path] = $function;
     }
 
-    public static function route_post($url_path, $callback)
+    public static function route_post($url_path, $function)
     {
-        self::$routes_post[$url_path] = $callback;
+        self::$routes_post[$url_path] = $function;
     }
 
-    public static function route_put($url_path, $callback)
+    public static function route_put($url_path, $function)
     {
-        self::$routes_put[$url_path] = $callback;
+        self::$routes_put[$url_path] = $function;
     }
 
-    public static function route_delete($url_path, $callback)
+    public static function route_delete($url_path, $function)
     {
-        self::$routes_delete[$url_path] = $callback;
+        self::$routes_delete[$url_path] = $function;
     }
 
     public static function run()
@@ -85,19 +85,16 @@ class karinto
             $url_path = '/' . implode('/', $path_info_pieces);
 
             if (isset($routes[$url_path]) &&
-                is_callable($routes[$url_path], false, $callable_name)) {
+                function_exists($routes[$url_path])) {
 
-                $callback = $routes[$url_path];
-                if (strpos($callable_name, '::') === false) {
-                    // maybe a function
-                    self::$invoked_function_name = $callback;
-                }
+                $function = $routes[$url_path];
+                self::$invoked_function_name = $function;
 
                 $url_params = array_reverse($url_params);
                 $req->init($url_params);
 
                 try {
-                    call_user_func_array($callback, array(&$req, &$res));
+                    $function($req, $res);
                 } catch (Exception $e) {
                     // uncaught exception
                     $res->status(500);
