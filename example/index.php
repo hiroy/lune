@@ -1,12 +1,14 @@
 <?php
 require_once dirname(dirname(__FILE__)) . '/karinto.php';
 
+karinto::$function_dir = 'functions';
 karinto::$input_encoding = 'UTF-8';
 karinto::$output_encoding = 'UTF-8';
 karinto::$layout_template = 'layout.php';
 
 karinto::route('/', 'myapp_default');
 karinto::route('/foo', 'myapp_foo');
+karinto::route('/bar', 'myapp_bar');
 
 karinto::run();
 

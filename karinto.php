@@ -14,6 +14,7 @@ class karinto
 {
     // configuration
     public static $template_dir = 'templates';
+    public static $function_dir;
     public static $input_encoding;
     public static $output_encoding;
     public static $layout_template;
@@ -75,32 +76,39 @@ class karinto
             break;
         }
 
+        // function_dir?
+        $use_function_dir = strlen(self::$function_dir) > 0;
+
         // init
         $url_params = array();
         $req = new karinto_request();
         $res = new karinto_response();
 
         while (count($path_info_pieces) > 0) {
-
             $url_path = '/' . implode('/', $path_info_pieces);
-
-            if (isset($routes[$url_path]) &&
-                function_exists($routes[$url_path])) {
-
+            if (isset($routes[$url_path])) {
                 $function = $routes[$url_path];
-                self::$invoked_function_name = $function;
-
-                $url_params = array_reverse($url_params);
-                $req->init($url_params);
-
-                try {
-                    $function($req, $res);
-                } catch (Exception $e) {
-                    // uncaught exception
-                    $res->status(500);
+                if ($use_function_dir && !function_exists($function)) {
+                    // try to load a file
+                    $file = self::$function_dir .
+                        DIRECTORY_SEPARATOR . $function . '.php';
+                    if (is_file($file) && is_readable($file)) {
+                        include_once $file;
+                    }
                 }
-
-                return;
+                if (function_exists($function)) {
+                    // invoke
+                    self::$invoked_function_name = $function;
+                    $url_params = array_reverse($url_params);
+                    $req->init($url_params);
+                    try {
+                        $function($req, $res);
+                    } catch (Exception $e) {
+                        // uncaught exception
+                        $res->status(500);
+                    }
+                    return;
+                }
             }
             // not found
             $url_params[] = array_pop($path_info_pieces);
