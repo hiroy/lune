@@ -1,6 +1,6 @@
 <?php
 /**
- * karinto - the micro-framework for PHP web apps
+ * karinto - the PHP minimal framework
  *
  * PHP version 5
  *
@@ -10,6 +10,9 @@
  * @license   http://opensource.org/licenses/bsd-license.php New BSD License
  */
 
+/**
+ * Cookie-Stored session class.
+ */
 class karinto_session
 {
     const cookie_max_length = 4096;
