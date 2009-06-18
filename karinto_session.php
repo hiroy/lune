@@ -1,6 +1,6 @@
 <?php
 /**
- * karinto - the PHP minimal framework
+ * karinto - PHP minimal framework
  *
  * PHP version 5
  *
