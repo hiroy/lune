@@ -1,6 +1,6 @@
 <?php
 /**
- * karinto - PHP minimal framework
+ * karinto - a PHP minimal framework
  *
  * PHP version 5
  *
@@ -181,40 +181,6 @@ class karinto_request
             return $this->_url_params[$index];
         }
         return null;
-    }
-
-    public function put_raw_params()
-    {
-        if (karinto::request_method() !== 'PUT') {
-            return null;
-        }
-        if (isset($_POST['_method']) &&
-            is_string($_POST['_method']) &&
-            strtoupper($_POST['_method']) === 'PUT') {
-            // raw POST data (not converted)
-            $put_params = $_POST;
-            unset($put_params['_method']);
-        } else {
-            parse_str(file_get_contents('php://input', $put_params));
-        }
-        return $put_params;
-    }
-
-    public function delete_raw_params()
-    {
-        if (karinto::request_method() !== 'DELETE') {
-            return null;
-        }
-        if (isset($_POST['_method']) &&
-            is_string($_POST['_method']) &&
-            strtoupper($_POST['_method']) === 'DELETE') {
-            // raw POST data (not converted)
-            $delete_params = $_POST;
-            unset($delete_params['_method']);
-        } else {
-            parse_str(file_get_contents('php://input', $delete_params));
-        }
-        return $delete_params;
     }
 
     public function cookie($name)
