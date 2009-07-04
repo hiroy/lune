@@ -19,11 +19,39 @@ class karinto
     public static $output_encoding;
     public static $layout_template;
     public static $layout_content_var_name = 'karinto_content_for_layout';
-    public static $function_prefix = '';
     public static $http_version = '1.1';
 
     // used internally
-    public static $invoked_function_name;
+    public static $routes_get = array();
+    public static $routes_post = array();
+    public static $routes_put = array();
+    public static $routes_delete = array();
+    public static $invoked_function;
+
+    public static function route($url_path, $function)
+    {
+        self::route_get($url_path, $function);
+    }
+
+    public static function route_get($url_path, $function)
+    {
+        self::$routes_get[$url_path] = $function;
+    }
+
+    public static function route_post($url_path, $function)
+    {
+        self::$routes_post[$url_path] = $function;
+    }
+
+    public static function route_put($url_path, $function)
+    {
+        self::$routes_put[$url_path] = $function;
+    }
+
+    public static function route_delete($url_path, $function)
+    {
+        self::$routes_delete[$url_path] = $function;
+    }
 
     public static function run()
     {
@@ -31,37 +59,57 @@ class karinto
         $path_info = self::path_info();
         $path_info_pieces = explode('/', strtolower(trim($path_info, '/')));
 
-        $request_method = strtolower(self::request_method());
-        $use_function_dir = strlen(self::$function_dir) > 0;
-
         // init
         $url_params = array();
+        $use_function_dir = strlen(self::$function_dir) > 0;
         $req = new karinto_request();
         $res = new karinto_response();
 
+        // routes
+        $routes = array();
+        switch (strtolower(self::request_method())) {
+        case 'get':
+            $routes = self::$routes_get;
+            break;
+        case 'post':
+            $routes = self::$routes_post;
+            break;
+        case 'put':
+            $routes = self::$routes_put;
+            break;
+        case 'delete':
+            $routes = self::$routes_delete;
+            break;
+        default:
+            $res->status(404);
+            return;
+        }
+
         while (count($path_info_pieces) > 0) {
-            $function = self::$function_prefix .
-                $request_method . '_' . implode('_', $path_info_pieces);
-            if ($use_function_dir && !function_exists($function)) {
-                // try to load a file
-                $file = self::$function_dir .
-                    DIRECTORY_SEPARATOR . $function . '.php';
-                if (is_file($file) && is_readable($file)) {
-                    include_once $file;
+            $url_path = '/' . implode('/', $path_info_pieces);
+            if (isset($routes[$url_path])) {
+                $function = $routes[$url_path];
+                if ($use_function_dir && !function_exists($function)) {
+                    // try to load a function file
+                    $file = self::$function_dir .
+                        DIRECTORY_SEPARATOR . $function . '.php';
+                    if (is_file($file) && is_readable($file)) {
+                        include_once $file;
+                    }
                 }
-            }
-            if (function_exists($function)) {
-                // invoke
-                self::$invoked_function_name = $function;
-                $url_params = array_reverse($url_params);
-                $req->init($url_params);
-                try {
-                    $function($req, $res);
-                } catch (Exception $e) {
-                    // uncaught exception
-                    $res->status(500);
+                if (function_exists($function)) {
+                    // invoke
+                    self::$invoked_function = $function;
+                    $url_params = array_reverse($url_params);
+                    $req->init($url_params);
+                    try {
+                        $function($req, $res);
+                    } catch (Exception $e) {
+                        // uncaught exception
+                        $res->status(500);
+                    }
+                    return;
                 }
-                return;
             }
             // not found
             $url_params[] = array_pop($path_info_pieces);
@@ -274,8 +322,8 @@ class karinto_response
     {
         $text = '';
         if (is_null($template) &&
-            !is_null(karinto::$invoked_function_name)) {
-            $template = karinto::$invoked_function_name . '.php';
+            !is_null(karinto::$invoked_function)) {
+            $template = karinto::$invoked_function . '.php';
         }
         try {
             $text = $this->fetch($template);

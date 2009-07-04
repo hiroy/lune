@@ -6,15 +6,19 @@ karinto::$input_encoding = 'UTF-8';
 karinto::$output_encoding = 'UTF-8';
 karinto::$layout_template = 'layout.php';
 
+karinto::route('/', 'myapp_defalut');
+karinto::route('/foo', 'myapp_foo');
+karinto::route('/bar', 'myapp_bar');
+
 karinto::run();
 
 
-function get_(karinto_request $req, karinto_response $res)
+function myapp_defalut(karinto_request $req, karinto_response $res)
 {
     $res->output('This is a test page');
 }
 
-function get_foo(karinto_request $req, karinto_response $res)
+function myapp_foo(karinto_request $req, karinto_response $res)
 {
     $res->content_type_html('UTF-8');
     $res->message = 'Hello ' . $req->name;
