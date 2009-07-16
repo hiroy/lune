@@ -14,16 +14,39 @@ class karinto
 {
     // configuration
     public static $template_dir = 'templates';
-    public static $function_dir;
     public static $input_encoding;
     public static $output_encoding;
     public static $layout_template;
-    public static $session_secret_key = 'please set your app key';
     public static $layout_content_var_name = 'karinto_content_for_layout';
     public static $http_version = '1.1';
 
-    // used internally
-    public static $invoked_function;
+    protected static $_routes = array('GET' => array(),
+        'POST' => array(), 'PUT' => array(), 'DELETE' => array());
+
+    public static function dispatch($url_path, $function)
+    {
+        self::dispatch_get($url_path, $function);
+    }
+
+    public static function dispatch_get($url_path, $function)
+    {
+        self::$_routes['GET'][$url_path] = $function;
+    }
+
+    public static function dispatch_post($url_path, $function)
+    {
+        self::$_routes['POST'][$url_path] = $function;
+    }
+
+    public static function dispatch_put($url_path, $function)
+    {
+        self::$_routes['PUT'][$url_path] = $function;
+    }
+
+    public static function dispatch_delete($url_path, $function)
+    {
+        self::$_routes['DELETE'][$url_path] = $function;
+    }
 
     public static function run()
     {
@@ -31,46 +54,41 @@ class karinto
         $path_info = self::path_info();
         $path_info_pieces = explode('/', strtolower(trim($path_info, '/')));
 
-        // init
+        // routes
         $request_method = self::request_method();
+        $routes = array();
+        if (isset(self::$_routes[$request_method])) {
+            $routes = self::$_routes[$request_method];
+        }
+
+        // init
         $url_params = array();
-        $use_function_dir = strlen(self::$function_dir) > 0;
         $req = new karinto_request();
         $res = new karinto_response();
 
         while (count($path_info_pieces) > 0) {
 
-            $function = $request_method . '_'
-                      . implode('_', $path_info_pieces);
+            $url_path = '/' . implode('/', $path_info_pieces);
 
-            if ($use_function_dir && !function_exists($function)) {
-                $function_file = self::$function_dir
-                               . DIRECTORY_SEPARATOR . $function . '.php';
-                if (is_file($function_file) && is_readable($function_file)) {
-                    include_once $function_file;
-                }
-            }
+            if (isset($routes[$url_path])) {
 
-            if (function_exists($function)) {
-                self::$invoked_function = $function;
-                $url_params = array_reverse($url_params);
-                $req->init($url_params);
-                try {
-                    $reflection = new ReflectionFunction($function);
-                    if ($reflection->getNumberOfParameters() > 2) {
-                        // using session
-                        $session = new karinto_session($res);
-                        $reflection->invoke($req, $res, $session);
-                    } else {
-                        // not using session
-                        $reflection->invoke($req, $res);
+                // a function name or an anonymous function
+                $function = $routes[$url_path];
+
+                if (is_callable($function)) {
+
+                    $url_params = array_reverse($url_params);
+                    $req->init($url_params);
+
+                    try {
+                        // invoke
+                        call_user_func($function, $req, $res);
+                    } catch (Exception $e) {
+                        // uncaught exception
+                        $res->status(500);
                     }
-                } catch (Exception $e) {
-                    // uncaught exception
-                    $res->status(500);
                 }
             }
-
             // not found
             $url_params[] = array_pop($path_info_pieces);
         }
@@ -278,13 +296,9 @@ class karinto_response
         $this->_body .= $text;
     }
 
-    public function render($template = null, $convert_encoding = true)
+    public function render($template, $convert_encoding = true)
     {
         $text = '';
-        if (is_null($template) &&
-            !is_null(karinto::$invoked_function)) {
-            $template = karinto::$invoked_function . '.php';
-        }
         try {
             $text = $this->fetch($template);
         } catch (karinto_exception $e) {
@@ -464,136 +478,6 @@ class karinto_response
                 $value, ENT_QUOTES, mb_internal_encoding());
         }
         return $value;
-    }
-}
-
-/**
- * Cookie-Stored session class.
- */
-class karinto_session
-{
-    const cookie_max_length = 4096;
-    protected $_res;
-    protected $_vars = array();
-    protected $_available = false;
-    protected $_cookie_name;
-    protected $_cookie_params;
-
-    public function __construct(karinto_response $res)
-    {
-        $this->_res = $res;
-        $this->_available = true;
-        // use session settings
-        $this->_cookie_name = session_name();
-        $this->_cookie_params = session_get_cookie_params();
-        $this->_restore();
-    }
-
-    public function __destruct()
-    {
-        if ($this->_available) {
-            $this->_save();
-        }
-    }
-
-    public function __set($name, $value)
-    {
-        $this->_vars[$name] = $value;
-    }
-
-    public function __get($name)
-    {
-        if (isset($this->_vars[$name])) {
-            return $this->_vars[$name];
-        }
-        return null;
-    }
-
-    public function __isset($name)
-    {
-        return isset($this->_vars[$name]);
-    }
-
-    public function __unset($name)
-    {
-        if (isset($this->_vars[$name])) {
-            unset($this->_vars[$name]);
-        }
-    }
-
-    public function lifetime($seconds)
-    {
-        $this->_cookie_params['lifetime'] = $seconds;
-    }
-
-    public function destroy()
-    {
-        $this->_available = false;
-        $this->_vars = array();
-        $this->_cookie('', time() - 3600);
-    }
-
-    protected function _restore()
-    {
-        if (!isset($_COOKIE[$this->_cookie_name])) {
-            // cookie not exists
-            return;
-        }
-        $cookie_data = $_COOKIE[$this->_cookie_name];
-        $data_list = explode('--', $cookie_data);
-        if (count($data_list) !== 2) {
-            // invalid cookie value
-            $this->destroy();
-            return;
-        }
-        $vars = @unserialize(base64_decode($data_list[0]));
-        if ($vars === false || !is_array($vars)) {
-            // broken cookie value
-            $this->destroy();
-            return;
-        }
-        if ($this->_digest($vars) !== $data_list[1]) {
-            // tampered
-            $this->destroy();
-            return;
-        }
-        $this->_vars = $vars;
-    }
-
-    protected function _save()
-    {
-        $expire = time() + $this->_cookie_params['lifetime'];
-        $digest = $this->_digest($this->_vars);
-        $cookie_data = base64_encode(serialize($this->_vars)) . '--' . $digest;
-
-        if (strlen($cookie_data) > self::cookie_max_length) {
-            throw new karinto_exception('session data is too large');
-        }
-
-        $this->_cookie($cookie_data, $expire);
-    }
-
-    protected function _digest($data)
-    {
-        $serialized_data = serialize($data);
-        return hash_hmac(
-            'sha1', $serialized_data, karinto::$session_secret_key);
-    }
-
-    protected function _cookie($value, $expire)
-    {
-        $name = $this->_cookie_name;
-        $params = $this->_cookie_params;
-
-        if (empty($params['domain']) && empty($params['secure'])) {
-            $this->_res->cookie($name, $value, $expire, $params['path']);
-        } else if (empty($params['secure'])) {
-            $this->_res->cookie($name, $value, $expire,
-                $params['path'], $params['domain']);
-        } else {
-            $this->_res->cookie($name, $value, $expire,
-               $params['path'], $params['domain'], $params['secure']);
-        }
     }
 }
 
