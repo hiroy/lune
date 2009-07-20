@@ -20,6 +20,8 @@ class karinto
     public static $layout_content_var_name = 'karinto_content_for_layout';
     public static $http_version = '1.1';
 
+    // used internally
+    public static $invoked_function;
     protected static $_routes = array('GET' => array(),
         'POST' => array(), 'PUT' => array(), 'DELETE' => array());
 
@@ -76,6 +78,11 @@ class karinto
                 $function = $routes[$url_path];
 
                 if (is_callable($function)) {
+
+                    if (is_string($function)) {
+                        // function name
+                        self::$invoked_function = $function;
+                    }
 
                     $url_params = array_reverse($url_params);
                     $req->init($url_params);
@@ -296,8 +303,16 @@ class karinto_response
         $this->_body .= $text;
     }
 
-    public function render($template, $convert_encoding = true)
+    public function render($template = null, $convert_encoding = true)
     {
+        if (is_null($template)) {
+            if (karinto::$invoked_function) {
+                $template = karinto::$invoked_function . '.php';
+            } else {
+                throw new karinto_exception('template not defined');
+            }
+        }
+
         $text = '';
         try {
             $text = $this->fetch($template);
