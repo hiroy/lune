@@ -11,11 +11,17 @@ function myapp_default(karinto_request $req, karinto_response $res)
     $res->output('This is a test page');
 }
 
-// >= PHP 5.3
-karinto::dispatch('/foo', function ($req, $res) {
+karinto::dispatch('/foo', 'myapp_foo');
+function myapp_foo(karinto_request $req, karinto_response $res)
+{
     $res->content_type_html('UTF-8');
     $res->message = 'Hello ' . $req->name;
-    $res->render('foo.php');
+    $res->render();
+}
+
+// >= PHP 5.3
+karinto::dispatch('/bar', function (karinto_request $req, karinto_response $res) {
+    $res->render('myapp_bar.php');
 });
 
 karinto::run();
