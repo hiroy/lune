@@ -19,6 +19,7 @@ class karinto
     public static $layout_template;
     public static $layout_content_var_name = 'karinto_content_for_layout';
     public static $http_version = '1.1';
+    public static $session_auto_start = true;
 
     // used internally
     public static $invoked_function;
@@ -522,10 +523,9 @@ class karinto_session
 
     public function __construct()
     {
-        if (session_id() !== false) {
-            session_start();
+        if (karinto::$session_auto_start) {
+            $this->start();
         }
-        $this->_vars = $_SESSION;
     }
 
     public function __destruct()
@@ -556,6 +556,14 @@ class karinto_session
         if (isset($this->_vars[$name])) {
             unset($this->_vars[$name]);
         }
+    }
+
+    public function start()
+    {
+        if (session_id() !== false) {
+            session_start();
+        }
+        $this->_vars = $_SESSION;
     }
 
     public function close()
