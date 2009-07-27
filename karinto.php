@@ -89,7 +89,27 @@ class karinto
 
                     try {
                         // invoke
-                        call_user_func($function, $req, $res);
+                        if (is_string($function)) {
+                            // function name
+                            $ref = new ReflectionFunction($function);
+                            if ($ref->getNumberOfParameters() > 2) {
+                                $session = new karinto_session();
+                                $ref->invoke($req, $res, $session);
+                            } else {
+                                $ref->invoke($req, $res);
+                            }
+                        } else {
+                            // anonymous function (PHP version >= 5.3.0)
+                            $object_ref = new ReflectionObject($function);
+                            $method_ref = $object_ref->getMethod('__invoke');
+                            if ($method_ref->getNumberOfParameters() > 2) {
+                                $session = new karinto_session();
+                                $method_ref->invoke(
+                                    $function, $req, $res, $session);
+                            } else {
+                                $method_ref->invoke($function, $req, $res);
+                            }
+                        }
                     } catch (Exception $e) {
                         // uncaught exception
                         $res->status(500);
@@ -493,6 +513,66 @@ class karinto_response
                 $value, ENT_QUOTES, mb_internal_encoding());
         }
         return $value;
+    }
+}
+
+class karinto_session
+{
+    protected $_vars = array();
+
+    public function __construct()
+    {
+        if (session_id() !== false) {
+            session_start();
+        }
+        $this->_vars = $_SESSION;
+    }
+
+    public function __destruct()
+    {
+        $this->close();
+    }
+
+    public function __set($name, $value)
+    {
+        $this->_vars[$name] = $value;
+    }
+
+    public function __get($name)
+    {
+        if (isset($this->_vars[$name])) {
+            return $this->_vars[$name];
+        }
+        return null;
+    }
+
+    public function __isset($name)
+    {
+        return isset($this->_vars[$name]);
+    }
+
+    public function __unset($name)
+    {
+        if (isset($this->_vars[$name])) {
+            unset($this->_vars[$name]);
+        }
+    }
+
+    public function close()
+    {
+        $_SESSION = $this->_vars;
+        session_write_close();
+    }
+
+    public function destroy()
+    {
+        $this->_vars = array();
+        session_destroy();
+    }
+
+    public function regenerate_id()
+    {
+        session_regenerate_id(true);
     }
 }
 
