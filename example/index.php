@@ -19,7 +19,7 @@ function myapp_foo(karinto_request $req, karinto_response $res)
     $res->render();
 }
 
-// >= PHP 5.3
+// PHP version >= 5.3.0
 karinto::dispatch('/bar', function (karinto_request $req, karinto_response $res) {
     $res->render('myapp_bar.php');
 });
