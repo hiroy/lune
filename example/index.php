@@ -24,5 +24,15 @@ karinto::dispatch('/bar', function (karinto_request $req, karinto_response $res)
     $res->render('myapp_bar.php');
 });
 
+// class
+karinto::dispatch('/baz', array('Myapp_Baz', 'execute'));
+class Myapp_Baz
+{
+    public static function execute(karinto_request $req, karinto_response $res)
+    {
+        $res->output("This is a '/baz' page.");
+    }
+}
+
 karinto::run();
 

@@ -19,7 +19,6 @@ class karinto
     public static $layout_template;
     public static $layout_content_var_name = 'karinto_content_for_layout';
     public static $http_version = '1.1';
-    public static $session_auto_start = true;
 
     // used internally
     public static $invoked_function;
@@ -80,7 +79,8 @@ class karinto
 
                 if (is_callable($function)) {
 
-                    if (is_string($function)) {
+                    if (is_string($function) &&
+                        strpos($function, '::') === false) {
                         // function name
                         self::$invoked_function = $function;
                     }
@@ -88,33 +88,15 @@ class karinto
                     $url_params = array_reverse($url_params);
                     $req->init($url_params);
 
+                    // invoke
                     try {
-                        // invoke
-                        if (is_string($function)) {
-                            // function name
-                            $ref = new ReflectionFunction($function);
-                            if ($ref->getNumberOfParameters() > 2) {
-                                $session = new karinto_session();
-                                $ref->invoke($req, $res, $session);
-                            } else {
-                                $ref->invoke($req, $res);
-                            }
-                        } else {
-                            // anonymous function (PHP version >= 5.3.0)
-                            $object_ref = new ReflectionObject($function);
-                            $method_ref = $object_ref->getMethod('__invoke');
-                            if ($method_ref->getNumberOfParameters() > 2) {
-                                $session = new karinto_session();
-                                $method_ref->invoke(
-                                    $function, $req, $res, $session);
-                            } else {
-                                $method_ref->invoke($function, $req, $res);
-                            }
-                        }
+                        call_user_func($function, $req, $res);
                     } catch (Exception $e) {
                         // uncaught exception
                         $res->status(500);
                     }
+
+                    return;
                 }
             }
             // not found
@@ -243,6 +225,18 @@ class karinto_request
             return $this->_cookies[$name];
         }
         return null;
+    }
+
+    public function session($start = false)
+    {
+        static $session;
+        if (!$session) {
+            $session = new karinto_session();
+        }
+        if ($start) {
+            $session->start();
+        }
+        return $session;
     }
 
     protected function _unmagic_quotes($var)
@@ -521,13 +515,6 @@ class karinto_session
 {
     protected $_vars = array();
 
-    public function __construct()
-    {
-        if (karinto::$session_auto_start) {
-            $this->start();
-        }
-    }
-
     public function __destruct()
     {
         $this->close();
@@ -560,7 +547,7 @@ class karinto_session
 
     public function start()
     {
-        if (session_id() !== false) {
+        if (session_id() === '') {
             session_start();
         }
         $this->_vars = $_SESSION;
@@ -569,18 +556,24 @@ class karinto_session
     public function close()
     {
         $_SESSION = $this->_vars;
-        session_write_close();
+        if (session_id() !== '') {
+            session_write_close();
+        }
     }
 
     public function destroy()
     {
         $this->_vars = array();
-        session_destroy();
+        if (session_id() !== '') {
+            session_destroy();
+        }
     }
 
     public function regenerate_id()
     {
-        session_regenerate_id(true);
+        if (session_id() !== '') {
+            session_regenerate_id(true);
+        }
     }
 }
 
@@ -593,4 +586,3 @@ if (count(debug_backtrace()) === 0) {
     $res = new karinto_response();
     $res->status(403);
 }
-
