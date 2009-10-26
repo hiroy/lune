@@ -22,46 +22,13 @@ class karinto
 
     // used internally
     public static $invoked_function;
-    protected static $_routes = array('GET' => array(),
-        'POST' => array(), 'PUT' => array(), 'DELETE' => array());
-
-    public static function dispatch($url_path, $function)
-    {
-        self::dispatch_get($url_path, $function);
-    }
-
-    public static function dispatch_get($url_path, $function)
-    {
-        self::$_routes['GET'][$url_path] = $function;
-    }
-
-    public static function dispatch_post($url_path, $function)
-    {
-        self::$_routes['POST'][$url_path] = $function;
-    }
-
-    public static function dispatch_put($url_path, $function)
-    {
-        self::$_routes['PUT'][$url_path] = $function;
-    }
-
-    public static function dispatch_delete($url_path, $function)
-    {
-        self::$_routes['DELETE'][$url_path] = $function;
-    }
 
     public static function run()
     {
-        // path_info
+        // path_info and request_method
         $path_info = self::path_info();
         $path_info_pieces = explode('/', strtolower(trim($path_info, '/')));
-
-        // routes
-        $request_method = self::request_method();
-        $routes = array();
-        if (isset(self::$_routes[$request_method])) {
-            $routes = self::$_routes[$request_method];
-        }
+        $request_method = strtolower(self::request_method());
 
         // init
         $url_params = array();
@@ -70,38 +37,29 @@ class karinto
 
         while (count($path_info_pieces) > 0) {
 
-            $url_path = '/' . implode('/', $path_info_pieces);
+            // function name
+            $function = $request_method . '_' . implode('_', $path_info_pieces);
 
-            if (isset($routes[$url_path])) {
+            if (function_exists($function)) {
 
-                // a function name or an anonymous function
-                $function = $routes[$url_path];
+                self::$invoked_function = $function;
+                $req->init(array_reverse($url_params));
 
-                if (is_callable($function)) {
-
-                    if (is_string($function) &&
-                        strpos($function, '::') === false) {
-                        // function name
-                        self::$invoked_function = $function;
-                    }
-
-                    $url_params = array_reverse($url_params);
-                    $req->init($url_params);
-
+                try {
                     // invoke
-                    try {
-                        call_user_func($function, $req, $res);
-                    } catch (Exception $e) {
-                        // uncaught exception
-                        $res->status(500);
-                    }
-
-                    return;
+                    call_user_func($function, $req, $res);
+                } catch (Exception $e) {
+                    // uncaught exception
+                    $res->status(500);
                 }
+
+                return;
             }
+
             // not found
             $url_params[] = array_pop($path_info_pieces);
         }
+
         // not found at last
         $res->status(404);
     }
