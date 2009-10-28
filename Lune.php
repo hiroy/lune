@@ -309,7 +309,7 @@ class Lune_Response
     public function render($template = null, $convertEncoding = true)
     {
         if (is_null($template)) {
-            if (Lune::$invokedCallbackName) {
+            if (!is_null(Lune::$layoutTemplate)) {
                 $template = Lune::$invokedCallbackName . '.php';
             } else {
                 throw new Lune_Exception('template not defined');
@@ -339,7 +339,7 @@ class Lune_Response
             if (!is_file($layoutTemplate) ||
                 !is_readable($layoutTemplate)) {
                 throw new Lune_Exception(
-                    "{$layout_template}: not readable");
+                    "{$layoutTemplate}: not readable");
             }
         }
 
