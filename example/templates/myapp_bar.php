@@ -1,1 +1,1 @@
-This is a '/bar' page.
+<p>This is a /bar page.</p>

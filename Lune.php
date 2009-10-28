@@ -1,67 +1,103 @@
 <?php
 /**
- * karinto - a PHP minimal framework
+ * Lune - a PHP minimal framework
  *
  * PHP version 5
  *
  * @author    YAMAOKA Hiroyuki
- * @copyright 2008-2009 YAMAOKA Hiroyuki
- * @link      http://github.com/hiroy/karinto
+ * @copyright 2009 YAMAOKA Hiroyuki
+ * @link      http://github.com/hiroy/lune
  * @license   http://opensource.org/licenses/bsd-license.php New BSD License
  */
 
-class karinto
+class Lune
 {
     // configuration
-    public static $template_dir = 'templates';
-    public static $input_encoding;
-    public static $output_encoding;
-    public static $layout_template;
-    public static $layout_content_var_name = 'karinto_content_for_layout';
-    public static $http_version = '1.1';
+    public static $templateDir = 'templates';
+    public static $inputEncoding;
+    public static $outputEncoding;
+    public static $layoutTemplate;
+    public static $layoutContentVarName = 'lune_content_for_layout';
+    public static $httpVersion;
 
-    // used internally
-    public static $invoked_function;
+    // internally used
+    public static $invokedCallbackName;
+    protected static $_routes = array(
+        'GET' => array(), 'POST' => array(),
+        'PUT' => array(), 'DELETE' => array());
 
     public static function run()
     {
-        // path_info and request_method
-        $path_info = self::path_info();
-        $path_info_pieces = explode('/', strtolower(trim($path_info, '/')));
-        $request_method = strtolower(self::request_method());
+        // path info
+        $pathInfo = self::pathInfo();
+        $pathInfoPieces = explode('/', strtolower(trim($pathInfo, '/')));
 
-        // init
-        $url_params = array();
-        $req = new karinto_request();
-        $res = new karinto_response();
-
-        while (count($path_info_pieces) > 0) {
-
-            // function name
-            $function = $request_method . '_' . implode('_', $path_info_pieces);
-
-            if (function_exists($function)) {
-
-                self::$invoked_function = $function;
-                $req->init(array_reverse($url_params));
-
-                try {
-                    // invoke
-                    call_user_func($function, $req, $res);
-                } catch (Exception $e) {
-                    // uncaught exception
-                    $res->status(500);
-                }
-
-                return;
-            }
-
-            // not found
-            $url_params[] = array_pop($path_info_pieces);
+        // routes
+        $requestMethod = self::requestMethod();
+        $routes = array();
+        if (isset(self::$_routes[$requestMethod])) {
+            $routes = self::$_routes[$requestMethod];
         }
 
+        // init
+        $urlParams = array();
+        $req = new Lune_Request();
+        $res = new Lune_Response();
+
+        while (count($pathInfoPieces) > 0) {
+
+            $urlPath = '/' . implode('/', $pathInfoPieces);
+
+            if (isset($routes[$urlPath])) {
+
+                $callback = $routes[$urlPath];
+                if (is_callable($callback)) {
+
+                    if (is_string($callback) &&
+                        strpos('::', $callback) === false) {
+                        // function name
+                        self::$invokedCallbackName = $callback;
+                    }
+
+                    $req->init(array_reverse($urlParams));
+                    try {
+                        call_user_func($callback, $req, $res);
+                    } catch (Exception $e) {
+                        // uncaught exception
+                        $res->status(500);
+                    }
+                }
+            }
+            // not found
+            $urlParams[] = array_pop($pathInfoPieces);
+        }
         // not found at last
         $res->status(404);
+    }
+
+    public static function route($urlPath, $callback)
+    {
+        self::routeGet($urlPath, $callback);
+    }
+
+    public static function routeGet($urlPath, $callback)
+    {
+        self::$_routes['GET'][$urlPath] = $callback;
+    }
+
+    public static function routePost($urlPath, $callback)
+    {
+        self::$_routes['POST'][$urlPath] = $callback;
+    }
+
+    public static function routePut($urlPath, $callback)
+    {
+        self::$_routes['PUT'][$urlPath] = $callback;
+    }
+
+    public static function routeDelete($urlPath, $callback)
+    {
+        self::$_routes['DELETE'][$urlPath] = $callback;
     }
 
     public static function env($name)
@@ -70,67 +106,61 @@ class karinto
         if ($value === false) {
             $value = null;
         }
-        return str_replace(chr(0), '', $value);
+        return $value;
     }
 
     public static function uri()
     {
-        if (getenv('REQUEST_URI') === false) {
+        $uri = self::env('REQUEST_URI');
+        if (is_null($uri)) {
             // IIS
             return self::env('URI');
         }
-        $uri = self::env('REQUEST_URI');
-        $delim_pos = strpos($uri, '?');
-        if ($delim_pos !== false) {
-            $uri = substr($uri, 0, $delim_pos);
+        $pos = strpos($uri, '?');
+        if ($pos !== false) {
+            $uri = substr($uri, 0, $pos);
         }
         return $uri;
     }
 
-    public static function path_info()
+    public static function pathInfo()
     {
         $uri = self::uri();
-        $script_name = self::env('SCRIPT_NAME');
-        $trim_pattern = '';
-        if (preg_match('/^' . preg_quote($script_name, '/') . '/', $uri)) {
+        $scriptName = self::env('SCRIPT_NAME');
+        $trimPattern = '';
+        if (preg_match('/^' . preg_quote($scriptName, '/') . '/', $uri)) {
             // without mod_rewrite
-            $trim_pattern = preg_quote($script_name, '/');
+            $trimPattern = preg_quote($scriptName, '/');
         } else {
-            // with mod_rewrite, hiding a file
-            $trim_pattern = preg_quote(dirname($script_name), '/');
+            // with mod_rewrite, hiding a file name
+            $trimPattern = preg_quote(dirname($scriptName), '/');
         }
-        return preg_replace("/^{$trim_pattern}/", '', $uri);
+        return preg_replace("/^{$trimPattern}/", '', $uri);
     }
 
-    public static function request_method()
+    public static function requestMethod()
     {
         $method = strtoupper(self::env('REQUEST_METHOD'));
-        if ($method === 'POST' &&
-            isset($_POST['_method']) &&
-            is_string($_POST['_method'])) {
-            switch (strtoupper($_POST['_method'])) {
-            case 'PUT':
-                $method = 'PUT';
-                break;
-            case 'DELETE':
-                $method = 'DELETE';
-                break;
+        if ($method === 'POST' && isset($_POST['_method'])) {
+            $pseudoMethod = strtoupper($_POST['_method']);
+            if ($pseudoMethod === 'PUT' || $pseudoMethod === 'DELETE') {
+                $method = $pseudoMethod;
             }
         }
         return $method;
     }
 
-    public static function template($template_file)
+    public static function template($templateFile)
     {
-        return self::$template_dir . DIRECTORY_SEPARATOR . $template_file;
+        return self::$templateDir . DIRECTORY_SEPARATOR . $templateFile;
     }
 }
 
-class karinto_request
+class Lune_Request
 {
-    protected $_params = array();
-    protected $_url_params = array();
-    protected $_cookies = array();
+    protected $_params;
+    protected $_urlParams;
+    protected $_cookies;
 
     public function __set($name, $value)
     {
@@ -139,7 +169,7 @@ class karinto_request
 
     public function __get($name)
     {
-        // only a single value is returned
+        // only a single value will return
         return $this->param($name);
     }
 
@@ -148,14 +178,14 @@ class karinto_request
         return isset($this->_params[$name]);
     }
 
-    public function init(array $url_params)
+    public function init($urlParams)
     {
-        $this->_params = $this->_unmagic_quotes($_POST + $_GET);
-        $this->_url_params = $url_params;
-        $this->_cookies = $this->_unmagic_quotes($_COOKIE);
-        if (!is_null(karinto::$input_encoding)) {
+        $this->_params = $this->_unmagicQuotes($_POST + $_GET);
+        $this->_urlParams = $urlParams;
+        $this->_cookies = $this->_unmagicQuotes($_COOKIE);
+        if (!is_null(Lune::$inputEncoding)) {
             mb_convert_variables(mb_internal_encoding(),
-                karinto::$input_encoding, $this->_params);
+                Lune::$inputEncoding, $this->_params);
         }
     }
 
@@ -169,10 +199,10 @@ class karinto_request
         return null;
     }
 
-    public function url_param($index)
+    public function urlParam($index)
     {
-        if (isset($this->_url_params[$index])) {
-            return $this->_url_params[$index];
+        if (isset($this->_urlParams[$index])) {
+            return $this->_urlParams[$index];
         }
         return null;
     }
@@ -189,7 +219,7 @@ class karinto_request
     {
         static $session;
         if (!$session) {
-            $session = new karinto_session();
+            $session = new Lune_Session();
         }
         if ($start) {
             $session->start();
@@ -197,7 +227,7 @@ class karinto_request
         return $session;
     }
 
-    protected function _unmagic_quotes($var)
+    protected function _unmagicQuotes($var)
     {
         if (is_array($var)) {
             return array_map(array($this, __METHOD__), $var);
@@ -209,7 +239,7 @@ class karinto_request
     }
 }
 
-class karinto_response
+class Lune_Response
 {
     protected $_vars = array();
     protected $_headers = array();
@@ -267,58 +297,58 @@ class karinto_response
         }
     }
 
-    public function output($text, $convert_encoding = true)
+    public function output($text, $convertEncoding = true)
     {
-        if ($convert_encoding && !is_null(karinto::$output_encoding)) {
+        if ($convertEncoding && !is_null(Lune::$outputEncoding)) {
             $text = mb_convert_encoding(
-                $text, karinto::$output_encoding, mb_internal_encoding());
+                $text, Lune::$outputEncoding, mb_internal_encoding());
         }
         $this->_body .= $text;
     }
 
-    public function render($template = null, $convert_encoding = true)
+    public function render($template = null, $convertEncoding = true)
     {
         if (is_null($template)) {
-            if (karinto::$invoked_function) {
-                $template = karinto::$invoked_function . '.php';
+            if (Lune::$invokedCallbackName) {
+                $template = Lune::$invokedCallbackName . '.php';
             } else {
-                throw new karinto_exception('template not defined');
+                throw new Lune_Exception('template not defined');
             }
         }
 
         $text = '';
         try {
             $text = $this->fetch($template);
-        } catch (karinto_exception $e) {
+        } catch (Lune_Exception $e) {
             // template file not found
             $this->status(404);
         }
-        $this->output($text, $convert_encoding);
+        $this->output($text, $convertEncoding);
     }
 
-    public function fetch($template, $html_escape = true)
+    public function fetch($template, $htmlEscape = true)
     {
         if (is_null($template)) {
-            throw new karinto_exception("template not set");
+            throw new Lune_Exception("template not set");
         }
 
-        $layout_template = null;
-        if (!is_null(karinto::$layout_template)) {
+        $layoutTemplate = null;
+        if (!is_null(Lune::$layoutTemplate)) {
             // layout template
-            $layout_template = karinto::template(karinto::$layout_template);
-            if (!is_file($layout_template) ||
-                !is_readable($layout_template)) {
-                throw new karinto_exception(
+            $layoutTemplate = Lune::template(Lune::$layoutTemplate);
+            if (!is_file($layoutTemplate) ||
+                !is_readable($layoutTemplate)) {
+                throw new Lune_Exception(
                     "{$layout_template}: not readable");
             }
         }
 
-        $template = karinto::template($template);
+        $template = Lune::template($template);
         if (!is_file($template) || !is_readable($template)) {
-            throw new karinto_exception("{$template}: not readable");
+            throw new Lune_Exception("{$template}: not readable");
         }
-        if ($html_escape) {
-            extract($this->escape_html($this->_vars), EXTR_SKIP);
+        if ($htmlEscape) {
+            extract($this->escapeHtml($this->_vars), EXTR_SKIP);
         } else {
             extract($this->_vars, EXTR_SKIP);
         }
@@ -327,36 +357,36 @@ class karinto_response
         include $template;
         $result = ob_get_clean();
 
-        if (!is_null($layout_template)) {
+        if (!is_null($layoutTemplate)) {
             // layout
-            ${karinto::$layout_content_var_name} = $result;
+            ${Lune::$layoutContentVarName} = $result;
             ob_start();
             ob_implicit_flush(false);
-            include $layout_template;
+            include $layoutTemplate;
             $result = ob_get_clean();
         }
 
         return $result;
     }
 
-    public function redirect($url, $status_code = 302)
+    public function redirect($url, $statusCode = 302)
     {
         if (substr($url, 0, 1) === '/') {
-            $uri = karinto::uri();
-            $path_info = karinto::path_info();
-            $base = substr($uri, 0, strlen($uri) - strlen($path_info));
+            $uri = Lune::uri();
+            $pathInfo = Lune::pathInfo();
+            $base = substr($uri, 0, strlen($uri) - strlen($pathInfo));
             $url = $base . $url;
         }
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
-        $this->status($status_code);
+        $this->status($statusCode);
         $this->header('Location', $url);
         $this->output('<html><head><meta http-equiv="refresh" content="0;'
             . 'url=' . htmlentities($url, ENT_QUOTES) . '"></head></html>');
     }
 
-    public function content_type($type, $charset = null)
+    public function contentType($type, $charset = null)
     {
         if (!is_null($charset)) {
             $type .= ';charset=' . $charset;
@@ -364,9 +394,9 @@ class karinto_response
         $this->header('Content-Type', $type);
     }
 
-    public function content_type_html($charset = null)
+    public function contentTypeHtml($charset = null)
     {
-        $this->content_type('text/html', $charset);
+        $this->contentType('text/html', $charset);
     }
 
     public function status($code)
@@ -421,15 +451,15 @@ class karinto_response
             509 => 'Bandwidth Limit Exceeded'
         );
         if (isset($messages[$code])) {
-            $http_version = karinto::$http_version;
-            if ($http_version !== '1.1') {
+            $httpVersion = Lune::$httpVersion;
+            if ($httpVersion !== '1.1') {
                 // HTTP/1.0
                 $messages[302] = 'Moved Temporarily';
             }
             $message = $messages[$code];
             $this->header('Status', "{$code} {$message}");
             $this->header(
-                null, "HTTP/{$http_version} {$code} {$message}");
+                null, "HTTP/{$httpVersion} {$code} {$message}");
         }
     }
 
@@ -443,7 +473,7 @@ class karinto_response
     }
 
     public function cookie($name, $value, $expire = null,
-        $path = '/', $domain = '', $secure = false, $http_only = false)
+        $path = '/', $domain = '', $secure = false, $httpOnly = false)
     {
         $this->_cookies[] = array(
             'name'      => $name,
@@ -452,24 +482,24 @@ class karinto_response
             'path'      => $path,
             'domain'    => $domain,
             'secure'    => $secure ? true : false,
-            'http_only' => $http_only
+            'http_only' => $httpOnly
         );
     }
 
-    public function escape_html($value)
+    public function escapeHtml($var)
     {
-        if (is_array($value)) {
-            return array_map(array($this, __METHOD__), $value);
+        if (is_array($var)) {
+            return array_map(array($this, __METHOD__), $var);
         }
-        if (is_scalar($value)) {
-            $value = htmlspecialchars(
-                $value, ENT_QUOTES, mb_internal_encoding());
+        if (is_scalar($var)) {
+            $var = htmlspecialchars(
+                $var, ENT_QUOTES, mb_internal_encoding());
         }
-        return $value;
+        return $var;
     }
 }
 
-class karinto_session
+class Lune_Session
 {
     protected $_vars = array();
 
@@ -527,7 +557,7 @@ class karinto_session
         }
     }
 
-    public function regenerate_id()
+    public function regenerateId()
     {
         if (session_id() !== '') {
             session_regenerate_id(true);
@@ -535,12 +565,12 @@ class karinto_session
     }
 }
 
-class karinto_exception extends Exception
+class Lune_Exception extends Exception
 {
 }
 
 if (count(debug_backtrace()) === 0) {
     // direct access
-    $res = new karinto_response();
+    $res = new Lune_Response();
     $res->status(403);
 }

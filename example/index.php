@@ -1,25 +1,25 @@
 <?php
-require_once dirname(dirname(__FILE__)) . '/karinto.php';
+require_once dirname(dirname(__FILE__)) . '/Lune.php';
 
-karinto::$input_encoding = 'UTF-8';
-karinto::$output_encoding = 'UTF-8';
-karinto::$layout_template = 'layout.php';
+Lune::$layoutTemplate = 'layout.php';
 
-karinto::run();
-
-function get_(karinto_request $req, karinto_response $res)
+Lune::route('/', 'myapp_default');
+function myapp_default(Lune_Request $req, Lune_Response $res)
 {
     $res->output('This is a test page');
 }
 
-function get_foo(karinto_request $req, karinto_response $res)
+Lune::route('/foo', 'myapp_foo');
+function myapp_foo(Lune_Request $req, Lune_Response $res)
 {
-    $res->content_type_html('UTF-8');
+    $res->contentTypeHtml('UTF-8');
     $res->message = 'Hello ' . $req->name;
-    $res->render();
+    $res->render();   // equals to $res->render('myapp_foo.php');
 }
 
-function get_bar(karinto_request $req, karinto_response $res) {
-    $res->render();
-}
+// PHP version >= 5.3.0
+Lune::route('/bar', function (Lune_Request $req, Lune_Response $res) {
+    $res->render('myapp_bar.php');
+});
 
+Lune::run();
