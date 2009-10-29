@@ -2,12 +2,12 @@
 
 ## Required
 
-* PHP 5.1 or higher
-* mbstring
+ * PHP 5.1 or higher
+ * mbstring
 
 ## Usage
 
-/index.php
+### /index.php
 
     <?php
     require_once 'Lune.php';
@@ -33,7 +33,7 @@
 
     Lune::run();
 
-/templates/myapp_foo.php
+### /templates/myapp_foo.php
 
     <html>
     <body>
