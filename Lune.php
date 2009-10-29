@@ -309,7 +309,7 @@ class Lune_Response
     public function render($template = null, $convertEncoding = true)
     {
         if (is_null($template)) {
-            if (!is_null(Lune::$layoutTemplate)) {
+            if (!is_null(Lune::$invokedCallbackName)) {
                 $template = Lune::$invokedCallbackName . '.php';
             } else {
                 throw new Lune_Exception('template not defined');
