@@ -1,4 +1,6 @@
-# Lune - a PHP minimal framework
+# Lune
+
+Lune is a PHP minimal framework for web applications.
 
 ## Required
 
