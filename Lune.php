@@ -314,7 +314,7 @@ class Lune_Response
         $this->output($text, $convertEncoding);
     }
 
-    public function fetch($template, $htmlEscape = true)
+    public function fetch($template)
     {
         if (is_null($template)) {
             throw new Lune_Exception("template not set");
@@ -335,11 +335,9 @@ class Lune_Response
         if (!is_file($template) || !is_readable($template)) {
             throw new Lune_Exception("{$template}: not readable");
         }
-        if ($htmlEscape) {
-            extract($this->escapeHtml($this->_vars), EXTR_SKIP);
-        } else {
-            extract($this->_vars, EXTR_SKIP);
-        }
+
+        extract($this->_vars, EXTR_SKIP);
+
         ob_start();
         ob_implicit_flush(false);
         include $template;
@@ -474,16 +472,23 @@ class Lune_Response
         );
     }
 
-    public function escapeHtml($var)
+    public static function escapeHtml($var)
     {
         if (is_array($var)) {
-            return array_map(array($this, __METHOD__), $var);
+            return array_map(array(__CLASS__, __METHOD__), $var);
         }
         if (is_scalar($var)) {
             $var = htmlspecialchars(
                 $var, ENT_QUOTES, mb_internal_encoding());
         }
         return $var;
+    }
+}
+
+if (!function_exists('h')) {
+    function h($str)
+    {
+        return Lune_Response::escapeHtml($str);
     }
 }
 
