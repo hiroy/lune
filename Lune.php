@@ -215,18 +215,6 @@ class Lune_Request
         return null;
     }
 
-    public function session($start = false)
-    {
-        static $session;
-        if (!$session) {
-            $session = new Lune_Session();
-        }
-        if ($start) {
-            $session->start();
-        }
-        return $session;
-    }
-
     protected function _unmagicQuotes($var)
     {
         if (is_array($var)) {
@@ -496,72 +484,6 @@ class Lune_Response
                 $var, ENT_QUOTES, mb_internal_encoding());
         }
         return $var;
-    }
-}
-
-class Lune_Session
-{
-    protected $_vars = array();
-
-    public function __destruct()
-    {
-        $this->close();
-    }
-
-    public function __set($name, $value)
-    {
-        $this->_vars[$name] = $value;
-    }
-
-    public function __get($name)
-    {
-        if (isset($this->_vars[$name])) {
-            return $this->_vars[$name];
-        }
-        return null;
-    }
-
-    public function __isset($name)
-    {
-        return isset($this->_vars[$name]);
-    }
-
-    public function __unset($name)
-    {
-        if (isset($this->_vars[$name])) {
-            unset($this->_vars[$name]);
-        }
-    }
-
-    public function start()
-    {
-        if (session_id() === '') {
-            session_start();
-        }
-        $this->_vars = $_SESSION;
-    }
-
-    public function close()
-    {
-        $_SESSION = $this->_vars;
-        if (session_id() !== '') {
-            session_write_close();
-        }
-    }
-
-    public function destroy()
-    {
-        $this->_vars = array();
-        if (session_id() !== '') {
-            session_destroy();
-        }
-    }
-
-    public function regenerateId()
-    {
-        if (session_id() !== '') {
-            session_regenerate_id(true);
-        }
     }
 }
 
