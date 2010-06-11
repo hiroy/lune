@@ -39,7 +39,7 @@ Lune is a PHP minimal framework for web applications.
 
     <html>
     <body>
-    <p><?php echo $message; ?></p>
+    <p><?php echo h($message); ?></p>
     </body>
     </html>
 
