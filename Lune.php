@@ -62,6 +62,7 @@ class Lune
                     $req->init(array_reverse($urlParams));
                     try {
                         call_user_func($callback, $req, $res);
+                        return;
                     } catch (Exception $e) {
                         // uncaught exception
                         $res->status(500);
