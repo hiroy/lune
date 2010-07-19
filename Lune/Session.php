@@ -66,7 +66,7 @@ class Lune_Session
             return;
         }
         $expire = time() + $this->cookieParam['lifetime'];
-        $cookieData = base64_encode(serialize($this->_vars));
+        $cookieData = base64_encode(serialize($this->_vars))
                     . '--' . $this->_digest($this->_vars);
         if (strlen($cookieData) > self::COOKIE_MAX_LENGTH) {
             throw new Exception('The session data is too large.');
