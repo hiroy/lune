@@ -19,6 +19,7 @@ class Lune
     public static $layoutTemplate;
     public static $layoutContentVarName = 'lune_content_for_layout';
     public static $httpVersion;
+    public static $notFoundCallback;
 
     // internally used
     public static $invokedCallbackName;
@@ -73,6 +74,20 @@ class Lune
             $urlParams[] = array_pop($pathInfoPieces);
         }
         // not found at last
+        if (is_callable(self::$notFoundCallback)) {
+            if (is_string(self::$notFoundCallback) &&
+                strpos('::', self::$notFoundCallback) === false) {
+                self::$invokedCallbackName = self::$notFoundCallback;
+            }
+            $req->init(array());
+            try {
+                $res->status(404);
+                call_user_func(self::$notFoundCallback, $req, $res);
+                return;
+            } catch (Exception $e) {
+                // nothing to do
+            }
+        }
         $res->status(404);
     }
 
@@ -179,7 +194,7 @@ class Lune_Request
         return isset($this->_params[$name]);
     }
 
-    public function init($urlParams)
+    public function init(array $urlParams)
     {
         $this->_params = $this->_unmagicQuotes($_POST + $_GET);
         $this->_urlParams = $urlParams;

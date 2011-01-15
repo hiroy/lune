@@ -2,6 +2,12 @@
 require_once dirname(dirname(__FILE__)) . '/Lune.php';
 
 Lune::$layoutTemplate = 'layout.php';
+Lune::$notFoundCallback = 'myapp_404';
+
+function myapp_404(Lune_Request $req, Lune_Response $res)
+{
+    $res->render(); // equals to $res->render('myapp_404.php');
+}
 
 Lune::route('/', 'myapp_default');
 function myapp_default(Lune_Request $req, Lune_Response $res)
