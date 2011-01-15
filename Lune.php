@@ -79,32 +79,6 @@ class Lune
         $res->status(404);
     }
 
-    public static function handleStatus($statusCode, Lune_Response $res)
-    {
-        $callback = null;
-        if ($statusCode == 404) {
-            $callback = self::$notFoundCallback;
-        } elseif ($statusCode >= 500) {
-            $callback = self::$serverErrorCallback;
-        } else {
-            return;
-        }
-
-        if (is_callable($callback)) {
-            if (is_string($callback) &&
-                strpos('::', $callback) === false) {
-                self::$invokedCallbackName = $callback;
-            }
-            $req = new Lune_Request();
-            $req->init(array());
-            try {
-                call_user_func($callback, $req, $res);
-            } catch (Exception $e) {
-                // nothing to do
-            }
-        }
-    }
-
     public static function route($urlPath, $callback)
     {
         self::routeGet($urlPath, $callback);
@@ -183,6 +157,33 @@ class Lune
     public static function template($templateFile)
     {
         return self::$templateDir . DIRECTORY_SEPARATOR . $templateFile;
+    }
+
+    // called internally
+    public static function handleStatus($statusCode, Lune_Response $res)
+    {
+        $callback = null;
+        if ($statusCode == 404) {
+            $callback = self::$notFoundCallback;
+        } elseif ($statusCode >= 500) {
+            $callback = self::$serverErrorCallback;
+        } else {
+            return;
+        }
+
+        if (is_callable($callback)) {
+            if (is_string($callback) &&
+                strpos('::', $callback) === false) {
+                self::$invokedCallbackName = $callback;
+            }
+            $req = new Lune_Request();
+            $req->init(array());
+            try {
+                call_user_func($callback, $req, $res);
+            } catch (Exception $e) {
+                // nothing to do
+            }
+        }
     }
 }
 
