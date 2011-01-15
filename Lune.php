@@ -20,6 +20,7 @@ class Lune
     public static $layoutContentVarName = 'lune_content_for_layout';
     public static $httpVersion;
     public static $notFoundCallback;
+    public static $serverErrorCallback;
 
     // internally used
     public static $invokedCallbackName;
@@ -78,17 +79,26 @@ class Lune
         $res->status(404);
     }
 
-    public static function handle404(Lune_Response $res)
+    public static function handleStatus($statusCode, Lune_Response $res)
     {
-        if (is_callable(self::$notFoundCallback)) {
-            if (is_string(self::$notFoundCallback) &&
-                strpos('::', self::$notFoundCallback) === false) {
-                self::$invokedCallbackName = self::$notFoundCallback;
+        $callback = null;
+        if ($statusCode == 404) {
+            $callback = self::$notFoundCallback;
+        } elseif ($statusCode >= 500) {
+            $callback = self::$serverErrorCallback;
+        } else {
+            return;
+        }
+
+        if (is_callable($callback)) {
+            if (is_string($callback) &&
+                strpos('::', $callback) === false) {
+                self::$invokedCallbackName = $callback;
             }
             $req = new Lune_Request();
             $req->init(array());
             try {
-                call_user_func(self::$notFoundCallback, $req, $res);
+                call_user_func($callback, $req, $res);
             } catch (Exception $e) {
                 // nothing to do
             }
@@ -467,8 +477,8 @@ class Lune_Response
             $this->header(
                 null, "HTTP/{$httpVersion} {$code} {$message}");
         }
-        if ($code == 404) {
-            Lune::handle404($this);
+        if ($code == 404 || $code >= 500) {
+            Lune::handleStatus($code, $this);
         }
     }
 
