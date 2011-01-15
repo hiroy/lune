@@ -405,7 +405,7 @@ class Lune_Response
     public function contentType($type, $charset = null)
     {
         if (!is_null($charset)) {
-            $type .= ';charset=' . $charset;
+            $type .= '; charset=' . $charset;
         }
         $this->header('Content-Type', $type);
     }
