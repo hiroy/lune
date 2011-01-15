@@ -73,22 +73,26 @@ class Lune
             // not found
             $urlParams[] = array_pop($pathInfoPieces);
         }
+
         // not found at last
+        $res->status(404);
+    }
+
+    public static function handle404(Lune_Response $res)
+    {
         if (is_callable(self::$notFoundCallback)) {
             if (is_string(self::$notFoundCallback) &&
                 strpos('::', self::$notFoundCallback) === false) {
                 self::$invokedCallbackName = self::$notFoundCallback;
             }
+            $req = new Lune_Request();
             $req->init(array());
             try {
-                $res->status(404);
                 call_user_func(self::$notFoundCallback, $req, $res);
-                return;
             } catch (Exception $e) {
                 // nothing to do
             }
         }
-        $res->status(404);
     }
 
     public static function route($urlPath, $callback)
@@ -462,6 +466,9 @@ class Lune_Response
             $this->header('Status', "{$code} {$message}");
             $this->header(
                 null, "HTTP/{$httpVersion} {$code} {$message}");
+        }
+        if ($code == 404) {
+            Lune::handle404($this);
         }
     }
 
