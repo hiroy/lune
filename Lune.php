@@ -390,10 +390,7 @@ class Lune_Response
     {
         if (substr($url, 0, 1) === '/') {
             $httpHost = Lune::env('HTTP_HOST');
-            $uri = Lune::uri();
-            $pathInfo = Lune::pathInfo();
-            $base = substr($uri, 0, strlen($uri) - strlen($pathInfo));
-            $url = ($isSecure ? 'https://' : 'http://') . $httpHost . $base . $url;
+            $url = ($isSecure ? 'https://' : 'http://') . $httpHost . '/' . $url;
         }
         while (ob_get_level() > 0) {
             ob_end_clean();
