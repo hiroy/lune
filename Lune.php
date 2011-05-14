@@ -386,13 +386,14 @@ class Lune_Response
         return $result;
     }
 
-    public function redirect($url, $statusCode = 302)
+    public function redirect($url, $statusCode = 302, $isSecure = false)
     {
         if (substr($url, 0, 1) === '/') {
+            $httpHost = Lune::env('HTTP_HOST');
             $uri = Lune::uri();
             $pathInfo = Lune::pathInfo();
             $base = substr($uri, 0, strlen($uri) - strlen($pathInfo));
-            $url = $base . $url;
+            $url = ($isSecure ? 'https://' : 'http://') . $httpHost . $base . $url;
         }
         while (ob_get_level() > 0) {
             ob_end_clean();
