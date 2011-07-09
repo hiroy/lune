@@ -9,8 +9,8 @@
  *
  * PHP version 5
  *
- * @author    YAMAOKA Hiroyuki
- * @copyright 2010 YAMAOKA Hiroyuki
+ * @author    Hiroyuki Yamaoka
+ * @copyright 2010-2011 Hiroyuki Yamaoka
  * @link      http://github.com/hiroy/lune
  * @license   http://opensource.org/licenses/bsd-license.php New BSD License
  */
