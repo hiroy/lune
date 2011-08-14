@@ -29,7 +29,7 @@ Lune is a PHP minimal framework for web applications.
     }
     
     // PHP version >= 5.3.0
-    Lune::route('/bar', function (Lune_Request $req, Lune_Response $res) {
+    Lune::route('/bar', function(Lune_Request $req, Lune_Response $res) {
         $res->render('myapp_foo.php');
     });
 
