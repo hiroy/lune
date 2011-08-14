@@ -79,29 +79,64 @@ class Lune
         $res->status(404);
     }
 
-    public static function route($urlPath, $callback)
-    {
-        self::routeGet($urlPath, $callback);
-    }
-
-    public static function routeGet($urlPath, $callback)
+    public static function get($urlPath, $callback)
     {
         self::$_routes['GET'][$urlPath] = $callback;
     }
 
-    public static function routePost($urlPath, $callback)
+    public static function post($urlPath, $callback)
     {
         self::$_routes['POST'][$urlPath] = $callback;
     }
 
-    public static function routePut($urlPath, $callback)
+    public static function put($urlPath, $callback)
     {
         self::$_routes['PUT'][$urlPath] = $callback;
     }
 
-    public static function routeDelete($urlPath, $callback)
+    public static function delete($urlPath, $callback)
     {
         self::$_routes['DELETE'][$urlPath] = $callback;
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function route($urlPath, $callback)
+    {
+        self::get($urlPath, $callback);
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function routeGet($urlPath, $callback)
+    {
+        self::get($urlPath, $callback);
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function routePost($urlPath, $callback)
+    {
+        self::post($urlPath, $callback);
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function routePut($urlPath, $callback)
+    {
+        self::put($urlPath, $callback);
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function routeDelete($urlPath, $callback)
+    {
+        self::delete($urlPath, $callback);
     }
 
     public static function env($name)
